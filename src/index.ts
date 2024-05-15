@@ -1,146 +1,74 @@
-// https://editor.p5js.org/codingtrain/sketches/IE77UYZ-G
-// https://www.youtube.com/watch?v=Ggxt06qSAe4&ab_channel=TheCodingTrain
+class CellularAutomaton {
+    cells: number[];
+    ruleSet: number[];
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    cellSize: number;
 
-function createCanvas(width, height, parentElement = document.body) {
-    // Create a canvas element
-    const canvas = document.createElement('canvas');
-  
-    // Set the width and height of the canvas
-    canvas.width = width;
-    canvas.height = height;
-  
-    // Append the canvas to the specified parent element
-    parentElement.appendChild(canvas);
-  
-    // Get the 2D drawing context
-    const ctx = canvas.getContext('2d');
-  
-    // Return the canvas and context for further use
-    return { canvas, ctx };
-}
-
-function parseRGBA(...args) {
-    // Convert the input arguments to a color
-    let [r, g, b, a] = args;
-  
-    // If only one argument is provided, use it as a grayscale value
-    if (args.length === 1) {
-      r = g = b = args[0];
-      a = 255;
-    }
-  
-    // If three arguments are provided, assume they are RGB values
-    if (args.length === 3) {
-      a = 255;
-    }
-  
-    // Normalize the color values
-    r = r / 255;
-    g = g / 255;
-    b = b / 255;
-    a = a / 255;
-
-    return [r, g, b, a];
-}
-
-function background(ctx, ...args) {
-    const [r, g, b, a] = parseRGBA(...args);
-    // Set the fill style and draw the background
-    ctx.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-}
-
-function square(ctx, x, y, s, ...args) {
-    const [r, g, b, a] = parseRGBA(...args);
-    // Set the fill style and draw the background
-    ctx.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
-    ctx.fillRect(x, y, s, s);
-}
-
-function computeCellState(a, b, c, ruleSet) {
-    // Create a string representing the state of the cell and its neighbors.
-    let neighborhood = "" + a + b + c;
-    // Convert the string to a binary number
-    let value = 7 - parseInt(neighborhood, 2);
-    // Return the new state based on the ruleset.
-    return parseInt(ruleSet[value]);
-}
-
-function createCA(rule = 30, width = 600, height = 600) {
-    // Create a white canvas
-    const { ctx } = createCanvas(width, height);
-    background(ctx, 255, 255, 255);
-
-    // Array to store the state of each cell.
-    let cells = [];
-    // The ruleset string
-    let ruleSet;
-    // Width of each cell in pixels
-    let w = 16;
-    // y-position
-    let y = 0;
-
-    // Convert the rule value to a binary string.
-    ruleSet = rule.toString(2).padStart(8, "0");
-
-    // Calculate the total number of cells based on canvas width.
-    let total = width / w;
-    // Initialize all cells to state 0 (inactive).
-    for (let i = 0; i < total; i++) {
-        cells[i] = 0;
+    constructor(size: number, rule: number, canvas: HTMLCanvasElement) {
+        this.cells = new Array(size).fill(0);
+        this.ruleSet = this.getRuleSet(rule);
+        this.canvas = canvas;
+        this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
+        this.cellSize = this.canvas.width / size;
     }
 
-    // Set the middle cell to state 1 (active) as the initial condition.
-    cells[Math.floor(total / 2)] = 1;
+    getRuleSet(rule: number): number[] {
+        return Array.from(rule.toString(2).padStart(8, '0')).map(Number);
+    }
 
-    return {
-        ctx,
-        cells,
-        ruleSet,
-        w,
-        y,
-    };
-}
+    computeCellState(left: number, center: number, right: number): number {
+        const index = 4 * left + 2 * center + right;
+        return this.ruleSet[7 - index];
+    }
 
-function runCA(ca, steps) {
-    for (let step = 0; step < steps; step++) {
-        let { ctx, cells, ruleSet, w, y } = ca;
-
-        // Draw each cell based on its state.
-        for (let i = 0; i < cells.length; i++) {
-            let x = i * w;
-            square(ctx, x, y, w, 255 - cells[i] * 255);
+    nextGeneration(): void {
+        let newCells: number[] = new Array(this.cells.length);
+        for (let i = 0; i < this.cells.length; i++) {
+            let left = this.cells[(i - 1 + this.cells.length) % this.cells.length];
+            let center = this.cells[i];
+            let right = this.cells[(i + 1) % this.cells.length];
+            newCells[i] = this.computeCellState(left, center, right);
         }
-    
-        // Move to the next row.
-        y += w;
-    
-        // Prepare an array for the next generation of cells.
-        let nextCells = [];
-    
-        // Iterate over each cell to calculate its next state.
-        let len = cells.length;
-        for (let i = 0; i < len; i++) {
-            // Calculate the states of neighboring cells
-            let left = cells[(i - 1 + len) % len];
-            let right = cells[(i + 1) % len];
-            let state = cells[i];
-            // Set the new state based on the current state and neighbors.
-            let newState = computeCellState(left, state, right, ruleSet);
-            nextCells[i] = newState;
-        }
-    
-        // Update the cells array for the next generation.
-        cells = nextCells;
+        this.cells = newCells;
+    }
 
-        // Update the ca object for the next step.
-        ca = { ctx, cells, ruleSet, w, y };
+    // Add a method to calculate the cell index from a canvas coordinate
+    getCellIndex(x: number): number {
+        return Math.floor(x / this.cellSize);
+    }
+
+    setCellState(index: number, state: number): void {
+        if (index >= 0 && index < this.cells.length) {
+            this.cells[index] = state;
+        } else {
+            throw new Error('Index out of bounds');
+        }
+    }
+
+    draw() {
+        for (let i = 0; i < this.cells.length; i++) {
+            this.ctx.fillStyle = this.cells[i] ? 'black' : 'white';
+            this.ctx.fillRect(i * this.cellSize, 0, this.cellSize, this.cellSize);
+        }
+    }
+
+    run(steps) {
+        for (let i = 0; i < steps; i++) {
+            this.draw();
+            this.nextGeneration();
+            this.ctx.translate(0, this.cellSize);
+        }
     }
 }
 
-function init() {
-    const ca = createCA(30, window.innerWidth, window.innerHeight);
-    runCA(ca, 10000);
-}
+const canvas = document.createElement('canvas');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+document.body.appendChild(canvas);
 
-init();
+let automaton = new CellularAutomaton(100, 30, canvas);
+// Set the middle cell to 1.
+automaton.setCellState(Math.floor(automaton.cells.length / 2), 1);
+// Run the CA for 100 steps.
+automaton.run(100);
