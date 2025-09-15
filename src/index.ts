@@ -34,9 +34,13 @@ automaton.setCellState(Math.floor(automaton.cells.length / 2), 1);
 let llmGenerations: number[][] = [];
 let deterministicGenerations: number[][] = [automaton.cells.slice()];
 
-function drawGeneration(cells: number[], ctx: CanvasRenderingContext2D, y: number, cellSize: number) {
+function drawGeneration(cells: number[], ctx: CanvasRenderingContext2D, y: number, cellSize: number, referenceCells?: number[]) {
     for (let i = 0; i < cells.length; i++) {
-        ctx.fillStyle = cells[i] ? 'black' : 'white';
+        if (referenceCells && cells[i] !== referenceCells[i]) {
+            ctx.fillStyle = 'red';
+        } else {
+            ctx.fillStyle = cells[i] ? 'black' : 'white';
+        }
         ctx.fillRect(i * cellSize, y, cellSize, cellSize);
     }
 }
@@ -55,7 +59,7 @@ async function runComparison(steps: number) {
                     // Parse the generated text as JSON
                     const llmGeneration = JSON.parse(generated_text);
                     llmGenerations.push(llmGeneration);
-                    drawGeneration(llmGeneration, ctxLLM, step * automaton.cellSize, automaton.cellSize);
+                    drawGeneration(llmGeneration, ctxLLM, step * automaton.cellSize, automaton.cellSize, deterministicGenerations[step]);
                     llm.removeEventListener('message', handler);
                     resolve(null);
                 }
@@ -72,4 +76,4 @@ async function runComparison(steps: number) {
     }
 }
 
-runComparison(100);
+runComparison(50);
