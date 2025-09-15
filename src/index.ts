@@ -4,8 +4,11 @@ const llm = new Worker(new URL('./llm.worker.ts', import.meta.url), {
     type: 'module'
 });
 
+const RULE = 30;
+const rowSize = 100;
 const canvasWidth = window.innerWidth / 2;
 const canvasHeight = window.innerHeight;
+const cellSize = canvasWidth / rowSize;
 
 // Create a flex container for canvases
 const container = document.createElement('div');
@@ -27,7 +30,7 @@ function createCanvas(width: number, height: number): CanvasRenderingContext2D {
 const ctxDeterministic = createCanvas(canvasWidth, canvasHeight);
 const ctxLLM = createCanvas(canvasWidth, canvasHeight);
 
-let automaton = new CellularAutomaton(100, 30, canvasWidth);
+let automaton = new CellularAutomaton(100, RULE);
 // Set the middle cell to 1 to start.
 automaton.setCellState(Math.floor(automaton.cells.length / 2), 1);
 
@@ -67,9 +70,9 @@ async function runComparison(steps: number) {
         });
 
         // Draw deterministic generation
-        drawGeneration(deterministicGenerations[step], ctxDeterministic, step * automaton.cellSize, automaton.cellSize);
+        drawGeneration(deterministicGenerations[step], ctxDeterministic, step * cellSize, cellSize);
         // Draw LLM generation, highlighting differences
-        drawGeneration(llmGenerations[step], ctxLLM, step * automaton.cellSize, automaton.cellSize, deterministicGenerations[step]);
+        drawGeneration(llmGenerations[step], ctxLLM, step * cellSize, cellSize, deterministicGenerations[step]);
         // Advance deterministic automaton
         automaton.nextGeneration();
         deterministicGenerations.push(automaton.cells.slice());

@@ -6,7 +6,6 @@
 export class CellularAutomaton {
     cells: number[]; // Array representing the current state of each cell (0 or 1)
     ruleSet: number[]; // Array of 8 bits representing the rule for cell state transitions
-    cellSize: number; // Width of each cell in pixels
 
     /**
      * Constructs a new CellularAutomaton.
@@ -14,10 +13,9 @@ export class CellularAutomaton {
      * @param rule Integer representing the rule (0-255)
      * @param canvasWidth Width of the canvas in pixels
      */
-    constructor(size: number, rule: number, canvasWidth: number) {
+    constructor(size: number, rule: number) {
         this.cells = new Array(size).fill(0);
         this.ruleSet = this.getRuleSet(rule);
-        this.cellSize = canvasWidth / size;
     }
 
     /**
@@ -57,15 +55,6 @@ export class CellularAutomaton {
             newCells[i] = this.computeCellState(left, center, right);
         }
         this.cells = newCells;
-    }
-
-    /**
-     * Calculates the cell index corresponding to a given x-coordinate.
-     * @param x X-coordinate
-     * @returns Cell index
-     */
-    getCellIndex(x: number): number {
-        return Math.floor(x / this.cellSize);
     }
 
     /**
