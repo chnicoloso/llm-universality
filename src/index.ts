@@ -49,9 +49,6 @@ function drawGeneration(cells: number[], ctx: CanvasRenderingContext2D, y: numbe
 async function runComparison(steps: number) {
     for (let step = 0; step < steps; step++) {
         await new Promise(resolve => {
-            // Draw deterministic generation
-            drawGeneration(deterministicGenerations[step], ctxDeterministic, step * automaton.cellSize, automaton.cellSize);
-
             // Draw LLM generation when available
             const handler = (e: MessageEvent) => {
                 if (e.data.status === 'complete') {
@@ -59,7 +56,6 @@ async function runComparison(steps: number) {
                     // Parse the generated text as JSON
                     const llmGeneration = JSON.parse(generated_text);
                     llmGenerations.push(llmGeneration);
-                    drawGeneration(llmGeneration, ctxLLM, step * automaton.cellSize, automaton.cellSize, deterministicGenerations[step]);
                     llm.removeEventListener('message', handler);
                     resolve(null);
                 }
@@ -68,8 +64,12 @@ async function runComparison(steps: number) {
             llm.addEventListener('message', handler);
             // Send current generation to LLM
             llm.postMessage({ text: JSON.stringify(deterministicGenerations[step]) });
-
         });
+
+        // Draw deterministic generation
+        drawGeneration(deterministicGenerations[step], ctxDeterministic, step * automaton.cellSize, automaton.cellSize);
+        // Draw LLM generation, highlighting differences
+        drawGeneration(llmGenerations[step], ctxLLM, step * automaton.cellSize, automaton.cellSize, deterministicGenerations[step]);
         // Advance deterministic automaton
         automaton.nextGeneration();
         deterministicGenerations.push(automaton.cells.slice());
