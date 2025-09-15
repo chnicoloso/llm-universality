@@ -4,7 +4,7 @@ const llm = new Worker(new URL('./llm.worker.ts', import.meta.url), {
     type: 'module'
 });
 
-const RULE = 30;
+const RULE = 110;
 const rowSize = 100;
 const canvasWidth = window.innerWidth / 2;
 const canvasHeight = window.innerHeight;
