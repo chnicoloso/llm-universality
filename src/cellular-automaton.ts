@@ -1,27 +1,23 @@
 /**
  * CellularAutomaton class simulates a 1D cellular automaton.
- * It supports drawing the automaton on an HTML canvas and evolving its state
- * according to a specified rule (e.g., Wolfram's elementary CA rules).
+ * It supports evolving its state according to a specified rule
+ * (e.g., Wolfram's elementary CA rules).
  */
 export class CellularAutomaton {
     cells: number[]; // Array representing the current state of each cell (0 or 1)
     ruleSet: number[]; // Array of 8 bits representing the rule for cell state transitions
-    canvas: HTMLCanvasElement; // Canvas element for visualization
-    ctx: CanvasRenderingContext2D; // 2D rendering context for the canvas
     cellSize: number; // Width of each cell in pixels
 
     /**
      * Constructs a new CellularAutomaton.
      * @param size Number of cells in the automaton
      * @param rule Integer representing the rule (0-255)
-     * @param canvas HTMLCanvasElement to draw the automaton
+     * @param canvasWidth Width of the canvas in pixels
      */
-    constructor(size: number, rule: number, canvas: HTMLCanvasElement) {
+    constructor(size: number, rule: number, canvasWidth: number) {
         this.cells = new Array(size).fill(0);
         this.ruleSet = this.getRuleSet(rule);
-        this.canvas = canvas;
-        this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
-        this.cellSize = this.canvas.width / size;
+        this.cellSize = canvasWidth / size;
     }
 
     /**
@@ -64,8 +60,8 @@ export class CellularAutomaton {
     }
 
     /**
-     * Calculates the cell index corresponding to a given x-coordinate on the canvas.
-     * @param x X-coordinate on the canvas
+     * Calculates the cell index corresponding to a given x-coordinate.
+     * @param x X-coordinate
      * @returns Cell index
      */
     getCellIndex(x: number): number {
@@ -83,30 +79,6 @@ export class CellularAutomaton {
             this.cells[index] = state;
         } else {
             throw new Error('Index out of bounds');
-        }
-    }
-
-    /**
-     * Draws the current generation of cells on the canvas.
-     * Black for state 1, white for state 0.
-     */
-    draw() {
-        for (let i = 0; i < this.cells.length; i++) {
-            this.ctx.fillStyle = this.cells[i] ? 'black' : 'white';
-            this.ctx.fillRect(i * this.cellSize, 0, this.cellSize, this.cellSize);
-        }
-    }
-
-    /**
-     * Runs the automaton for a specified number of generations,
-     * drawing each generation on the canvas and shifting the drawing down.
-     * @param steps Number of generations to run
-     */
-    run(steps: number) {
-        for (let i = 0; i < steps; i++) {
-            this.draw();
-            this.nextGeneration();
-            this.ctx.translate(0, this.cellSize);
         }
     }
 }
