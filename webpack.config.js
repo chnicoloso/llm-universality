@@ -20,6 +20,10 @@ module.exports = (env, argv) => {
                 },
             ],
         },
+        // https://github.com/huggingface/transformers.js/issues/984
+        ignoreWarnings: [
+            /Critical dependency: Accessing import\.meta directly is unsupported/
+        ],
         resolve: {
             alias: {
                 'src': path.resolve(__dirname, 'src'),
@@ -39,7 +43,7 @@ module.exports = (env, argv) => {
             }),
         ].filter(x => x),
         devServer: {
-            https: true,
+            server: 'https',
             allowedHosts: 'all',
             headers: {
                 "Access-Control-Allow-Origin": "*",
