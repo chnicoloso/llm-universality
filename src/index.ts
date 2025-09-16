@@ -95,11 +95,12 @@ function getLLMCellState(left: number, center: number, right: number, ruleSet: n
         // Send current cell neighborhood to LLM
         llm.postMessage({
             text,
-            max_new_tokens: 2,
-            temperature: 1,
-            do_sample: true,
-            num_beams: 1,
-            top_k: 20
+            max_new_tokens: 2, // Only need the digit plus maybe a newline; prevents chatter.
+            do_sample: false, // Turn OFF randomness; use greedy decoding for exact lookup.
+            temperature: 0, // (Ignored when do_sample=false) kept for clarity; no logits scaling.
+            top_k: 1, // (Ignored when do_sample=false) would keep only the single most likely token if sampling.
+            top_p: 1.0, // (Ignored when do_sample=false) full nucleus; irrelevant here.
+            num_beams: 1, // Disable beam search; avoids longer continuations and extra compute.
         });
     });
 }
@@ -111,7 +112,8 @@ async function getNextLLMGeneration(inputCells: number[], ruleSet: number[]): Pr
         let left = inputCells[(i - 1 + inputCells.length) % inputCells.length];
         let center = inputCells[i];
         let right = inputCells[(i + 1) % inputCells.length];
-        newCells[i] = await getLLMCellState(left, center, right, ruleSet);
+        const newCell = await getLLMCellState(left, center, right, ruleSet);
+        newCells[i] = newCell;
     }
     return newCells;
 }
@@ -122,7 +124,7 @@ async function runComparison(steps: number) {
         // Draw deterministic generation
         drawGeneration(deterministicGenerations[step], ctxDeterministic, step * cellSize, cellSize);
         // Draw LLM generation, highlighting differences
-        // drawGeneration(llmGenerations[step], ctxLLM, step * cellSize, cellSize, deterministicGenerations[step]);
+        drawGeneration(llmGenerations[step], ctxLLM, step * cellSize, cellSize, deterministicGenerations[step]);
         // Advance deterministic automaton
         advancedDeterministic();
         // Advance LLM automaton
