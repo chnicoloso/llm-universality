@@ -54,23 +54,8 @@ function advancedDeterministic() {
 }
 
 async function advancedLLM(step: number) {
-    await new Promise(resolve => {
-        // Draw LLM generation when available
-        const handler = (e: MessageEvent) => {
-            if (e.data.status === 'complete') {
-                const { generated_text } = e.data.output[0];
-                // Parse the generated text as JSON
-                const llmGeneration = JSON.parse(generated_text);
-                llmGenerations.push(llmGeneration);
-                llm.removeEventListener('message', handler);
-                resolve(null);
-            }
-        };
-
-        llm.addEventListener('message', handler);
-        // Send current generation to LLM
-        llm.postMessage({ text: JSON.stringify(llmGenerations[step]) });
-    });
+    const llmGeneration = await getNextLLMGeneration(llmGenerations[step], automaton.ruleSet);
+    llmGenerations.push(llmGeneration);
 }
 
 // Function to get the next cell state from the LLM
@@ -86,8 +71,42 @@ function getLLMCellState(left: number, center: number, right: number, ruleSet: n
             }
         }
         llm.addEventListener('message', handler);
+
+        const mapping = {
+            '[1,1,1]': ruleSet[0],
+            '[1,1,0]': ruleSet[1],
+            '[1,0,1]': ruleSet[2],
+            '[1,0,0]': ruleSet[3],
+            '[0,1,1]': ruleSet[4],
+            '[0,1,0]': ruleSet[5],
+            '[0,0,1]': ruleSet[6],
+            '[0,0,0]': ruleSet[7],
+        } as const;
+
+        const text = [
+            {
+                role: "system",
+                content: "You are a strict dictionary lookup engine."
+            },
+            {
+                role: "system",
+                content: "Given a JSON object 'mapping' and a 'query' string of the form '[l,c,r]', return ONLY a JSON number: 0 or 1. No prose, no quotes, no keys."
+            },
+            {
+                role: "system",
+                content: "Return ONLY a JSON number: 0 or 1. No prose, no quotes, no keys."
+            },
+            {
+                role: "user",
+                content: `mapping: ${JSON.stringify(mapping)}`
+            },
+            {
+                role: "user",
+                content: `query: ${JSON.stringify([left, center, right])}`
+            }
+        ];
         // Send current cell neighborhood to LLM
-        llm.postMessage({ text: JSON.stringify([left, center, right]) });
+        llm.postMessage({ text });
     });
 }
 
@@ -109,14 +128,11 @@ async function runComparison(steps: number) {
         // Draw deterministic generation
         drawGeneration(deterministicGenerations[step], ctxDeterministic, step * cellSize, cellSize);
         // Draw LLM generation, highlighting differences
-        drawGeneration(llmGenerations[step], ctxLLM, step * cellSize, cellSize, deterministicGenerations[step]);
+        // drawGeneration(llmGenerations[step], ctxLLM, step * cellSize, cellSize, deterministicGenerations[step]);
         // Advance deterministic automaton
         advancedDeterministic();
         // Advance LLM automaton
         await advancedLLM(step);
-        // Advance LLM automaton
-        // const llmGeneration = await getNextLLMGeneration(deterministicGenerations[step], automaton.ruleSet);
-        // llmGenerations.push(llmGeneration);
     }
 }
 

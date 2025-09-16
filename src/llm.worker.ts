@@ -3,7 +3,7 @@ import { pipeline, PipelineType } from "@huggingface/transformers";
 // Use the Singleton pattern to enable lazy construction of the pipeline.
 export default class PipelineSingleton {
     static task = 'text-generation' as PipelineType;
-    static model = 'Xenova/distilgpt2';
+    static model = 'Xenova/TinyLlama-1.1B-Chat-v1.0';
     static instance: Promise<any> | null = null;
 
     static async getInstance(progress_callback?: (x: any) => void) {
