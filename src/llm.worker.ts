@@ -3,12 +3,13 @@ import { pipeline, PipelineType } from "@huggingface/transformers";
 // Use the Singleton pattern to enable lazy construction of the pipeline.
 export default class PipelineSingleton {
     static task = 'text-generation' as PipelineType;
-    static model = 'Xenova/TinyLlama-1.1B-Chat-v1.0';
+    static model = 'Xenova/distilgpt2';
     static instance: Promise<any> | null = null;
 
     static async getInstance(progress_callback?: (x: any) => void) {
         this.instance ??= pipeline(this.task, this.model, {
-            progress_callback
+            progress_callback,
+            device: 'webgpu'
         });
         return this.instance;
     }
@@ -25,7 +26,8 @@ self.addEventListener('message', async (event) => {
     });
 
     // Actually perform the classification
-    const output = await generator(event.data.text);
+    const { text, ...rest } = event.data;
+    const output = await generator(text, rest);
 
     // Send the output back to the main thread
     self.postMessage({

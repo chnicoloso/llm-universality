@@ -60,53 +60,47 @@ async function advancedLLM(step: number) {
 
 // Function to get the next cell state from the LLM
 function getLLMCellState(left: number, center: number, right: number, ruleSet: number[]): Promise<number> {
+    const text = `
+    [1, 1, 1] -> ${ruleSet[0]}
+    [1, 1, 0] -> ${ruleSet[1]}
+    [1, 0, 1] -> ${ruleSet[2]}
+    [1, 0, 0] -> ${ruleSet[3]}
+    [0, 1, 1] -> ${ruleSet[4]}
+    [0, 1, 0] -> ${ruleSet[5]}
+    [0, 0, 1] -> ${ruleSet[6]}
+    [0, 0, 0] -> ${ruleSet[7]}
+
+    [${left},${center},${right}] ->`;
+
     return new Promise((resolve) => {
         const handler = (e: MessageEvent) => {
             if (e.data.status === 'complete') {
                 const { generated_text } = e.data.output[0];
+                // Remove the text that was echoed back
+                const cleaned_text = generated_text.replace(text, '').trim();
+                // Remove any trailing punctuation
+                const final_text = cleaned_text.replace(/[^01].*$/, '').trim();
+                // Ensure we only have a single character '0' or '1'
+                if (final_text !== '0' && final_text !== '1') {
+                    console.error('Unexpected LLM output:', generated_text);
+                }
+                // Parse the cleaned text as an integer
+                const llmCellState = parseInt(final_text, 10);
                 // Parse the generated text as JSON
-                const llmCellState = JSON.parse(generated_text);
                 llm.removeEventListener('message', handler);
                 resolve(llmCellState);
             }
         }
         llm.addEventListener('message', handler);
-
-        const mapping = {
-            '[1,1,1]': ruleSet[0],
-            '[1,1,0]': ruleSet[1],
-            '[1,0,1]': ruleSet[2],
-            '[1,0,0]': ruleSet[3],
-            '[0,1,1]': ruleSet[4],
-            '[0,1,0]': ruleSet[5],
-            '[0,0,1]': ruleSet[6],
-            '[0,0,0]': ruleSet[7],
-        } as const;
-
-        const text = [
-            {
-                role: "system",
-                content: "You are a strict dictionary lookup engine."
-            },
-            {
-                role: "system",
-                content: "Given a JSON object 'mapping' and a 'query' string of the form '[l,c,r]', return ONLY a JSON number: 0 or 1. No prose, no quotes, no keys."
-            },
-            {
-                role: "system",
-                content: "Return ONLY a JSON number: 0 or 1. No prose, no quotes, no keys."
-            },
-            {
-                role: "user",
-                content: `mapping: ${JSON.stringify(mapping)}`
-            },
-            {
-                role: "user",
-                content: `query: ${JSON.stringify([left, center, right])}`
-            }
-        ];
         // Send current cell neighborhood to LLM
-        llm.postMessage({ text });
+        llm.postMessage({
+            text,
+            max_new_tokens: 2,
+            temperature: 1,
+            do_sample: true,
+            num_beams: 1,
+            top_k: 20
+        });
     });
 }
 
