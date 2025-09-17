@@ -40,7 +40,14 @@ let llmGenerations: number[][] = [automaton.cells.slice()];
 function drawGeneration(cells: number[], ctx: CanvasRenderingContext2D, y: number, cellSize: number, referenceCells?: number[]) {
     for (let i = 0; i < cells.length; i++) {
         if (referenceCells && cells[i] !== referenceCells[i]) {
-            ctx.fillStyle = 'red';
+            // Cell is 0 but should be 1: red
+            if (cells[i] === 0 && referenceCells[i] === 1) {
+                ctx.fillStyle = 'red';
+            }
+            // Cell is 1 but should be 0: green
+            else if (cells[i] === 1 && referenceCells[i] === 0) {
+                ctx.fillStyle = 'green';
+            }
         } else {
             ctx.fillStyle = cells[i] ? 'black' : 'white';
         }
@@ -59,16 +66,16 @@ async function advancedLLM(step: number) {
 }
 
 // Function to get the next cell state from the LLM
-function getLLMCellState(left: number, center: number, right: number, ruleSet: number[]): Promise<number> {
+function getLLMCellState(left: number, center: number, right: number, ruleSet: number[], cellIndex): Promise<number> {
     const text = `
-    [1, 1, 1] -> ${ruleSet[0]}
-    [1, 1, 0] -> ${ruleSet[1]}
-    [1, 0, 1] -> ${ruleSet[2]}
-    [1, 0, 0] -> ${ruleSet[3]}
-    [0, 1, 1] -> ${ruleSet[4]}
-    [0, 1, 0] -> ${ruleSet[5]}
-    [0, 0, 1] -> ${ruleSet[6]}
-    [0, 0, 0] -> ${ruleSet[7]}
+    [1,1,1] -> ${ruleSet[0]}
+    [1,1,0] -> ${ruleSet[1]}
+    [1,0,1] -> ${ruleSet[2]}
+    [1,0,0] -> ${ruleSet[3]}
+    [0,1,1] -> ${ruleSet[4]}
+    [0,1,0] -> ${ruleSet[5]}
+    [0,0,1] -> ${ruleSet[6]}
+    [0,0,0] -> ${ruleSet[7]}
 
     [${left},${center},${right}] ->`;
 
@@ -82,7 +89,7 @@ function getLLMCellState(left: number, center: number, right: number, ruleSet: n
                 const final_text = cleaned_text.replace(/[^01].*$/, '').trim();
                 // Ensure we only have a single character '0' or '1'
                 if (final_text !== '0' && final_text !== '1') {
-                    console.error('Unexpected LLM output:', generated_text);
+                    console.error('Unexpected LLM output:', generated_text, cellIndex);
                 }
                 // Parse the cleaned text as an integer
                 const llmCellState = parseInt(final_text, 10);
@@ -112,7 +119,7 @@ async function getNextLLMGeneration(inputCells: number[], ruleSet: number[]): Pr
         let left = inputCells[(i - 1 + inputCells.length) % inputCells.length];
         let center = inputCells[i];
         let right = inputCells[(i + 1) % inputCells.length];
-        const newCell = await getLLMCellState(left, center, right, ruleSet);
+        const newCell = await getLLMCellState(left, center, right, ruleSet, i);
         newCells[i] = newCell;
     }
     return newCells;
@@ -124,7 +131,7 @@ async function runComparison(steps: number) {
         // Draw deterministic generation
         drawGeneration(deterministicGenerations[step], ctxDeterministic, step * cellSize, cellSize);
         // Draw LLM generation, highlighting differences
-        drawGeneration(llmGenerations[step], ctxLLM, step * cellSize, cellSize, deterministicGenerations[step]);
+        drawGeneration(llmGenerations[step], ctxLLM, step * cellSize, cellSize);
         // Advance deterministic automaton
         advancedDeterministic();
         // Advance LLM automaton
