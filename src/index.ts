@@ -139,4 +139,19 @@ async function runComparison(steps: number) {
     }
 }
 
-runComparison(50);
+
+// Add a button to trigger LLM CA overlay
+const llmButton = document.createElement('button');
+llmButton.textContent = 'Run LLM CA Overlay';
+llmButton.style.position = 'absolute';
+llmButton.style.top = '20px';
+llmButton.style.left = '20px';
+llmButton.style.zIndex = '10';
+document.body.appendChild(llmButton);
+
+// Run LLM overlay when button is pressed
+llmButton.onclick = async () => {
+    llmButton.disabled = true;
+    await runComparison(50);
+    llmButton.textContent = 'LLM CA Complete';
+};
