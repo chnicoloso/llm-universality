@@ -27,8 +27,7 @@ function createCanvas(width: number, height: number): CanvasRenderingContext2D {
     return canvas.getContext('2d')!;
 }
 
-const ctxDeterministic = createCanvas(canvasWidth, canvasHeight);
-const ctxLLM = createCanvas(canvasWidth, canvasHeight);
+const ctx = createCanvas(canvasWidth, canvasHeight);
 
 let automaton = new CellularAutomaton(100, RULE);
 // Set the middle cell to 1 to start.
@@ -37,20 +36,15 @@ automaton.setCellState(Math.floor(automaton.cells.length / 2), 1);
 let deterministicGenerations: number[][] = [automaton.cells.slice()];
 let llmGenerations: number[][] = [automaton.cells.slice()];
 
-function drawGeneration(cells: number[], ctx: CanvasRenderingContext2D, y: number, cellSize: number, referenceCells?: number[]) {
+function drawGeneration(
+    cells: number[],
+    ctx: CanvasRenderingContext2D,
+    y: number,
+    cellSize: number,
+    getCellColor: (cell: number, i: number) => string
+) {
     for (let i = 0; i < cells.length; i++) {
-        if (referenceCells && cells[i] !== referenceCells[i]) {
-            // Cell is 0 but should be 1: red
-            if (cells[i] === 0 && referenceCells[i] === 1) {
-                ctx.fillStyle = 'red';
-            }
-            // Cell is 1 but should be 0: green
-            else if (cells[i] === 1 && referenceCells[i] === 0) {
-                ctx.fillStyle = 'green';
-            }
-        } else {
-            ctx.fillStyle = cells[i] ? 'black' : 'white';
-        }
+        ctx.fillStyle = getCellColor(cells[i], i);
         ctx.fillRect(i * cellSize, y, cellSize, cellSize);
     }
 }
@@ -125,16 +119,25 @@ async function getNextLLMGeneration(inputCells: number[], ruleSet: number[]): Pr
     return newCells;
 }
 
-// Function to run one step of both automata and render them.
-async function runComparison(steps: number) {
+async function runDeterministicCA(steps: number) {
+    const deterministicColor = (cell: number) => cell ? 'lightgray' : 'white';
     for (let step = 0; step < steps; step++) {
-        // Draw deterministic generation
-        drawGeneration(deterministicGenerations[step], ctxDeterministic, step * cellSize, cellSize);
-        // Draw LLM generation, highlighting differences
-        drawGeneration(llmGenerations[step], ctxLLM, step * cellSize, cellSize);
-        // Advance deterministic automaton
+        drawGeneration(deterministicGenerations[step], ctx, step * cellSize, cellSize, deterministicColor);
         advancedDeterministic();
-        // Advance LLM automaton
+    }
+}
+
+// Function to run one step of both automata and render them.
+async function runLLMCA(steps: number) {
+    for (let step = 0; step < steps; step++) {
+        const referenceCells = deterministicGenerations[step];
+        const llmColor = (cell: number, i: number) => {
+            if (referenceCells && cell !== referenceCells[i]) {
+                return 'red';
+            }
+            return cell ? 'black' : 'white';
+        };
+        drawGeneration(llmGenerations[step], ctx, step * cellSize, cellSize, llmColor);
         await advancedLLM(step);
     }
 }
@@ -149,9 +152,12 @@ llmButton.style.left = '20px';
 llmButton.style.zIndex = '10';
 document.body.appendChild(llmButton);
 
+const STEPS = 50;
+
+runDeterministicCA(STEPS);
 // Run LLM overlay when button is pressed
 llmButton.onclick = async () => {
     llmButton.disabled = true;
-    await runComparison(50);
+    await runLLMCA(STEPS);
     llmButton.textContent = 'LLM CA Complete';
 };
