@@ -6,9 +6,9 @@ const llm = new Worker(new URL('./llm.worker.ts', import.meta.url), {
 
 const RULE = 110;
 const rowSize = 100;
-const canvasWidth = window.innerWidth / 2;
+const cellSize = 8; // Use integer pixel size for crisp rendering
+const canvasWidth = rowSize * cellSize; // Ensure canvas width matches cell grid
 const canvasHeight = window.innerHeight;
-const cellSize = canvasWidth / rowSize;
 
 // Create a flex container for canvases
 const container = document.createElement('div');
@@ -130,11 +130,7 @@ async function runDeterministicCA(steps: number) {
 // Function to run one step of both automata and render them.
 async function runLLMCA(steps: number) {
     for (let step = 0; step < steps; step++) {
-        const referenceCells = deterministicGenerations[step];
         const llmColor = (cell: number, i: number) => {
-            if (referenceCells && cell !== referenceCells[i]) {
-                return 'red';
-            }
             return cell ? 'black' : 'white';
         };
         drawGeneration(llmGenerations[step], ctx, step * cellSize, cellSize, llmColor);
