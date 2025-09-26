@@ -11,31 +11,20 @@
             height: 100vh;
             overflow: hidden;
         }
-        #container {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-        }
-        #llmButton {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 10;
-            padding: 10px 20px;
-            font-size: 16px;
-        }
     </style>
 </head>
 <body>
 <script>
 /**
- * Cellular Automaton Universality Demo
+ * LLM Universality Demo
  *
- * This file implements a visual demo of cellular automata, including a deterministic version and an LLM-powered version.
+ * This file implements an informal proof of the Universality/Turing Completeness of LLMs, specifically SmolLM2:1.7b.
+ * Model URL: https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B-Instruct
+ * The proof consists of showing the LLM can emulate the Rule 110 Cellular Automaton, which is proven to be Universal/Turing Complete.
+ * First we run a deterministic version of Rule 110 as a reference, then we run an LLM-powered version on top of it.
  *
  * @file index.html
- * @author chnicoloso
+ * @author Christian Lista Nicoloso
  */
 
 /**
@@ -163,7 +152,7 @@ class LLMCellularAutomaton extends CellularAutomaton {
      * Returns system prompts for the LLM.
      * @returns {Array<{role: string, content: string}>}
      */
-    getCASystemPrompts() {
+    getCARulesPrompt() {
         return [
             { role: "system", content: "You are a dictionary lookup engine" },
             { role: "system", content: "Below are your dictionary entries" },
@@ -188,14 +177,15 @@ class LLMCellularAutomaton extends CellularAutomaton {
      */
     async computeCellState(left, center, right) {
         const messages = [
-            ...this.getCASystemPrompts(),
+            ...this.getCARulesPrompt(),
             { role: 'user', content: `(${left},${center},${right})` }
         ];
         return this.getLLMResponse(messages, {
             model: 'smollm2:1.7b',
             messages,
             stream: false,
-            format: { type: 'number', enum: [0, 1] },
+            // This is safer but it could weaken the argument by adding constraints on top of the LLM's capabilities.
+            // format: { type: 'number', enum: [0, 1] },
             options: { temperature: 0 }
         });
     }
@@ -283,9 +273,14 @@ async function runCA(steps, ctx, history, automaton, getCellColor) {
  * Creates and appends the main container div.
  * @returns {HTMLDivElement}
  */
-function createContainer() {
+function addContainer() {
     const container = document.createElement('div');
-    container.id = 'container';
+    container.style = `
+        display: flex;
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+    `;
     document.body.appendChild(container);
     return container;
 }
@@ -295,10 +290,17 @@ function createContainer() {
  * @param {HTMLElement} container
  * @returns {HTMLButtonElement}
  */
-function createButton(container) {
+function addButton(container) {
     const button = document.createElement('button');
-    button.id = 'llmButton';
-    button.textContent = 'Run LLM CA';
+    button.textContent = 'Start';
+    button.style = `
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 10;
+        padding: 10px 20px;
+        font-size: 16px;
+    `;
     container.appendChild(button);
     return button;
 }
@@ -310,7 +312,7 @@ function createButton(container) {
  * @param {number} height
  * @returns {CanvasRenderingContext2D}
  */
-function createCanvas(container, width, height) {
+function addCanvas(container, width, height) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -320,9 +322,9 @@ function createCanvas(container, width, height) {
     return canvas.getContext('2d');
 }
 
-const container = createContainer();
-const llmButton = createButton(container);
-const ctx = createCanvas(container, CANVAS_WIDTH, CANVAS_HEIGHT);
+const container = addContainer();
+const startButton = addButton(container);
+const ctx = addCanvas(container, CANVAS_WIDTH, CANVAS_HEIGHT);
 
 const [deterministicCA, deterministicHistory] = setupAutomaton(DeterministicCellularAutomaton);
 const [llmCA, llmHistory] = setupAutomaton(LLMCellularAutomaton);
@@ -331,12 +333,12 @@ const [llmCA, llmHistory] = setupAutomaton(LLMCellularAutomaton);
 const deterministicColor = cell => cell ? 'lightgray' : 'white';
 runCA(STEPS, ctx, deterministicHistory, deterministicCA, deterministicColor);
 
-llmButton.onclick = async () => {
-    llmButton.disabled = true;
+startButton.onclick = async () => {
+    startButton.disabled = true;
     // Now run the LLM-based CA and render it on top of the reference.
     const llmColor = (cell, i) => cell ? 'black' : 'white';
     await runCA(STEPS, ctx, llmHistory, llmCA, llmColor);
-    llmButton.textContent = 'LLM CA Complete';
+    startButton.disabled = false;
 };
 </script>
 </body>
