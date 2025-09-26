@@ -17,10 +17,6 @@
             height: 100vh;
             position: relative;
         }
-        canvas {
-            flex: 1;
-            height: 100%;
-        }
         #llmButton {
             position: absolute;
             top: 20px;
@@ -61,7 +57,7 @@ const CELL_SIZE = 8;
  * Width of the canvas in pixels.
  * @type {number}
  */
-const CANVAS_WIDTH = ROW_SIZE * CELL_SIZE;
+const CANVAS_WIDTH = window.innerWidth;
 /**
  * Height of the canvas in pixels.
  * @type {number}
