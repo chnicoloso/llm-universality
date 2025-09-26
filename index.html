@@ -33,25 +33,74 @@
 </head>
 <body>
 <script>
-// Parameters
+/**
+ * Cellular Automaton Universality Demo
+ *
+ * This file implements a visual demo of cellular automata, including a deterministic version and an LLM-powered version.
+ *
+ * @file index.html
+ * @author chnicoloso
+ */
+
+/**
+ * The rule number for the automaton (e.g., Rule 110).
+ * @type {number}
+ */
 const RULE = 110;
+/**
+ * Number of cells in each row of the automaton.
+ * @type {number}
+ */
 const ROW_SIZE = 100;
+/**
+ * Size (in pixels) of each cell in the canvas.
+ * @type {number}
+ */
 const CELL_SIZE = 8;
+/**
+ * Width of the canvas in pixels.
+ * @type {number}
+ */
 const CANVAS_WIDTH = ROW_SIZE * CELL_SIZE;
+/**
+ * Height of the canvas in pixels.
+ * @type {number}
+ */
 const CANVAS_HEIGHT = window.innerHeight;
+/**
+ * Number of generations/steps to simulate.
+ * @type {number}
+ */
 const STEPS = 50;
 
-// Base class for shared logic
+/**
+ * Base class for shared logic of cellular automata.
+ * @class
+ */
 class CellularAutomaton {
+    /**
+     * @param {number} size - Number of cells in the automaton.
+     * @param {number} rule - Rule number for the automaton.
+     */
     constructor(size, rule) {
         this.cells = new Array(size).fill(0);
         this.ruleSet = this.getRuleSet(rule);
     }
 
+    /**
+     * Converts rule number to rule set array.
+     * @param {number} rule
+     * @returns {number[]} Array of 0/1 values for each rule entry.
+     */
     getRuleSet(rule) {
         return Array.from(rule.toString(2).padStart(8, '0')).map(Number);
     }
 
+    /**
+     * Sets the state of a cell at a given index.
+     * @param {number} index
+     * @param {number} state - 0 or 1
+     */
     setCellState(index, state) {
         if (index >= 0 && index < this.cells.length) {
             this.cells[index] = state;
@@ -60,10 +109,21 @@ class CellularAutomaton {
         }
     }
 
+    /**
+     * Computes the next state for a cell (to be implemented by subclass).
+     * @param {number} left
+     * @param {number} center
+     * @param {number} right
+     * @returns {Promise<number>|number}
+     */
     async computeCellState(left, center, right) {
         throw new Error('computeCellState must be implemented by subclass');
     }
 
+    /**
+     * Advances the automaton by one generation.
+     * @returns {Promise<number[]>} New cell states.
+     */
     async nextGeneration() {
         const len = this.cells.length;
         let newCells = new Array(len);
@@ -78,14 +138,35 @@ class CellularAutomaton {
     }
 }
 
+/**
+ * Deterministic cellular automaton using a fixed rule set.
+ * @class
+ * @extends CellularAutomaton
+ */
 class DeterministicCellularAutomaton extends CellularAutomaton {
+    /**
+     * Computes cell state deterministically.
+     * @param {number} left
+     * @param {number} center
+     * @param {number} right
+     * @returns {number}
+     */
     computeCellState(left, center, right) {
         const index = 4 * left + 2 * center + right;
         return this.ruleSet[7 - index];
     }
 }
 
+/**
+ * Cellular automaton powered by LLM for state transitions.
+ * @class
+ * @extends CellularAutomaton
+ */
 class LLMCellularAutomaton extends CellularAutomaton {
+    /**
+     * Returns system prompts for the LLM.
+     * @returns {Array<{role: string, content: string}>}
+     */
     getCASystemPrompts() {
         return [
             { role: "system", content: "You are a dictionary lookup engine" },
@@ -102,6 +183,13 @@ class LLMCellularAutomaton extends CellularAutomaton {
         ];
     }
 
+    /**
+     * Computes cell state using LLM.
+     * @param {number} left
+     * @param {number} center
+     * @param {number} right
+     * @returns {Promise<number|null>} Cell state or null if failed.
+     */
     async computeCellState(left, center, right) {
         const messages = [
             ...this.getCASystemPrompts(),
@@ -116,6 +204,12 @@ class LLMCellularAutomaton extends CellularAutomaton {
         });
     }
 
+    /**
+     * Sends a request to the LLM API and parses the response.
+     * @param {Array} messages - Messages for the LLM.
+     * @param {Object} body - Request body for the LLM API.
+     * @returns {Promise<number|null>} Parsed response or null.
+     */
     async getLLMResponse(messages, body = {}) {
         const response = await fetch("http://localhost:11434/api/chat", {
             method: "POST",
@@ -136,13 +230,25 @@ class LLMCellularAutomaton extends CellularAutomaton {
     }
 }
 
-// Automaton setup
+/**
+ * Initializes an automaton and sets the initial state.
+ * @param {typeof CellularAutomaton} AutomatonClass - Automaton class to instantiate.
+ * @returns {[CellularAutomaton, number[][]]} Automaton instance and history.
+ */
 function setupAutomaton(AutomatonClass) {
     const automaton = new AutomatonClass(ROW_SIZE, RULE);
     automaton.setCellState(Math.floor(automaton.cells.length / 2), 1);
     return [automaton, [automaton.cells.slice()]];
 }
 
+/**
+ * Draws a generation of cells on the canvas.
+ * @param {number[]} cells - Array of cell states.
+ * @param {CanvasRenderingContext2D} ctx - Canvas context.
+ * @param {number} y - Vertical position to draw.
+ * @param {number} cellSize - Size of each cell.
+ * @param {(cell: number, i: number) => string} getCellColor - Function to get cell color.
+ */
 function drawGeneration(cells, ctx, y, cellSize, getCellColor) {
     for (let i = 0; i < cells.length; i++) {
         ctx.fillStyle = getCellColor(cells[i], i);
@@ -150,11 +256,26 @@ function drawGeneration(cells, ctx, y, cellSize, getCellColor) {
     }
 }
 
+/**
+ * Advances the automaton and updates history.
+ * @param {CellularAutomaton} automaton
+ * @param {number[][]} history
+ * @returns {Promise<void>}
+ */
 async function advanceAutomaton(automaton, history) {
     await automaton.nextGeneration();
     history.push(automaton.cells.slice());
 }
 
+/**
+ * Runs the automaton for a number of steps and draws each generation.
+ * @param {number} steps
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number[][]} history
+ * @param {CellularAutomaton} automaton
+ * @param {(cell: number, i: number) => string} getCellColor
+ * @returns {Promise<void>}
+ */
 async function runCA(steps, ctx, history, automaton, getCellColor) {
     for (let step = 0; step < steps; step++) {
         drawGeneration(history[step], ctx, step * CELL_SIZE, CELL_SIZE, getCellColor);
@@ -162,6 +283,10 @@ async function runCA(steps, ctx, history, automaton, getCellColor) {
     }
 }
 
+/**
+ * Creates and appends the main container div.
+ * @returns {HTMLDivElement}
+ */
 function createContainer() {
     const container = document.createElement('div');
     container.id = 'container';
@@ -169,6 +294,11 @@ function createContainer() {
     return container;
 }
 
+/**
+ * Creates and appends the LLM CA button.
+ * @param {HTMLElement} container
+ * @returns {HTMLButtonElement}
+ */
 function createButton(container) {
     const button = document.createElement('button');
     button.id = 'llmButton';
@@ -177,7 +307,13 @@ function createButton(container) {
     return button;
 }
 
-// DOM setup
+/**
+ * Creates and appends the canvas element.
+ * @param {HTMLElement} container
+ * @param {number} width
+ * @param {number} height
+ * @returns {CanvasRenderingContext2D}
+ */
 function createCanvas(container, width, height) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
