@@ -59,9 +59,41 @@ async function advancedLLM(step: number) {
     llmGenerations.push(llmGeneration);
 }
 
+async function callOllama(prompt: string, model: string = "llama3.1:latest") {
+    const response = await fetch("http://localhost:11434/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            model,
+            // prompt,
+            messages: prompt,
+            stream: false,
+            format: {
+                type: "number",
+                enum: [0, 1]
+            },
+            options: {
+                temperature: 0
+            }
+        })
+    });
+    const data = await response.json();
+    // Parse the structured output
+    if (data && data.message) {
+        try {
+            const parsed = JSON.parse(data.message.content);
+            return parsed;
+        } catch (e) {
+            console.error("Failed to parse LLM structured response:", data.message);
+            return null;
+        }
+    }
+    return null;
+}
+
 // Function to get the next cell state from the LLM
 function getLLMCellState(left: number, center: number, right: number, ruleSet: number[], cellIndex): Promise<number> {
-    const text = `
+    const text = `Given the following map:
     [1,1,1] -> ${ruleSet[0]}
     [1,1,0] -> ${ruleSet[1]}
     [1,0,1] -> ${ruleSet[2]}
@@ -70,40 +102,56 @@ function getLLMCellState(left: number, center: number, right: number, ruleSet: n
     [0,1,0] -> ${ruleSet[5]}
     [0,0,1] -> ${ruleSet[6]}
     [0,0,0] -> ${ruleSet[7]}
-
+What does the key below map to? Respond only with 0 or 1
     [${left},${center},${right}] ->`;
 
-    return new Promise((resolve) => {
-        const handler = (e: MessageEvent) => {
-            if (e.data.status === 'complete') {
-                const { generated_text } = e.data.output[0];
-                // Remove the text that was echoed back
-                const cleaned_text = generated_text.replace(text, '').trim();
-                // Remove any trailing punctuation
-                const final_text = cleaned_text.replace(/[^01].*$/, '').trim();
-                // Ensure we only have a single character '0' or '1'
-                if (final_text !== '0' && final_text !== '1') {
-                    console.error('Unexpected LLM output:', generated_text, cellIndex);
-                }
-                // Parse the cleaned text as an integer
-                const llmCellState = parseInt(final_text, 10);
-                // Parse the generated text as JSON
-                llm.removeEventListener('message', handler);
-                resolve(llmCellState);
-            }
-        }
-        llm.addEventListener('message', handler);
-        // Send current cell neighborhood to LLM
-        llm.postMessage({
-            text,
-            max_new_tokens: 2, // Only need the digit plus maybe a newline; prevents chatter.
-            do_sample: false, // Turn OFF randomness; use greedy decoding for exact lookup.
-            temperature: 0, // (Ignored when do_sample=false) kept for clarity; no logits scaling.
-            top_k: 1, // (Ignored when do_sample=false) would keep only the single most likely token if sampling.
-            top_p: 1.0, // (Ignored when do_sample=false) full nucleus; irrelevant here.
-            num_beams: 1, // Disable beam search; avoids longer continuations and extra compute.
-        });
-    });
+    const messages = [
+        { role: "system", content: "You are a dictionary lookup engine" },
+        { role: "system", content: "Below are your dictionary entries" },
+        { role: "system", content: `[1,1,1] -> ${ruleSet[0]}` },
+        { role: "system", content: `[1,1,0] -> ${ruleSet[1]}` },
+        { role: "system", content: `[1,0,1] -> ${ruleSet[2]}` },
+        { role: "system", content: `[1,0,0] -> ${ruleSet[3]}` },
+        { role: "system", content: `[0,1,1] -> ${ruleSet[4]}` },
+        { role: "system", content: `[0,1,0] -> ${ruleSet[5]}` },
+        { role: "system", content: `[0,0,1] -> ${ruleSet[6]}` },
+        { role: "system", content: `[0,0,0] -> ${ruleSet[7]}` },
+        { role: "system", content: "When you receive a key from the user, you respond only with the corresponding value." },
+        { role: "user", content: `[${left},${center},${right}]`}
+    ]
+
+    return callOllama(messages as any);
+    // return new Promise((resolve) => {
+    //     const handler = (e: MessageEvent) => {
+    //         if (e.data.status === 'complete') {
+    //             const { generated_text } = e.data.output[0];
+    //             // Remove the text that was echoed back
+    //             const cleaned_text = generated_text.replace(text, '').trim();
+    //             // Remove any trailing punctuation
+    //             const final_text = cleaned_text.replace(/[^01].*$/, '').trim();
+    //             // Ensure we only have a single character '0' or '1'
+    //             if (final_text !== '0' && final_text !== '1') {
+    //                 console.error('Unexpected LLM output:', generated_text, cellIndex);
+    //             }
+    //             // Parse the cleaned text as an integer
+    //             const llmCellState = parseInt(final_text, 10);
+    //             // Parse the generated text as JSON
+    //             llm.removeEventListener('message', handler);
+    //             resolve(llmCellState);
+    //         }
+    //     }
+    //     llm.addEventListener('message', handler);
+    //     // Send current cell neighborhood to LLM
+    //     llm.postMessage({
+    //         text,
+    //         max_new_tokens: 128, // Only need the digit plus maybe a newline; prevents chatter.
+    //         do_sample: false, // Turn OFF randomness; use greedy decoding for exact lookup.
+    //         temperature: 0, // (Ignored when do_sample=false) kept for clarity; no logits scaling.
+    //         top_k: 1, // (Ignored when do_sample=false) would keep only the single most likely token if sampling.
+    //         top_p: 1.0, // (Ignored when do_sample=false) full nucleus; irrelevant here.
+    //         num_beams: 1, // Disable beam search; avoids longer continuations and extra compute.
+    //     });
+    // });
 }
 
 // Function to get the next generation from the LLM for the entire row  
