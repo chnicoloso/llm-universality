@@ -1,9 +1,5 @@
 import { CellularAutomaton } from "./cellular-automaton";
 
-const llm = new Worker(new URL('./llm.worker.ts', import.meta.url), {
-    type: 'module'
-});
-
 const RULE = 110;
 const rowSize = 100;
 const cellSize = 8; // Use integer pixel size for crisp rendering
@@ -121,37 +117,6 @@ What does the key below map to? Respond only with 0 or 1
     ]
 
     return callOllama(messages as any);
-    // return new Promise((resolve) => {
-    //     const handler = (e: MessageEvent) => {
-    //         if (e.data.status === 'complete') {
-    //             const { generated_text } = e.data.output[0];
-    //             // Remove the text that was echoed back
-    //             const cleaned_text = generated_text.replace(text, '').trim();
-    //             // Remove any trailing punctuation
-    //             const final_text = cleaned_text.replace(/[^01].*$/, '').trim();
-    //             // Ensure we only have a single character '0' or '1'
-    //             if (final_text !== '0' && final_text !== '1') {
-    //                 console.error('Unexpected LLM output:', generated_text, cellIndex);
-    //             }
-    //             // Parse the cleaned text as an integer
-    //             const llmCellState = parseInt(final_text, 10);
-    //             // Parse the generated text as JSON
-    //             llm.removeEventListener('message', handler);
-    //             resolve(llmCellState);
-    //         }
-    //     }
-    //     llm.addEventListener('message', handler);
-    //     // Send current cell neighborhood to LLM
-    //     llm.postMessage({
-    //         text,
-    //         max_new_tokens: 128, // Only need the digit plus maybe a newline; prevents chatter.
-    //         do_sample: false, // Turn OFF randomness; use greedy decoding for exact lookup.
-    //         temperature: 0, // (Ignored when do_sample=false) kept for clarity; no logits scaling.
-    //         top_k: 1, // (Ignored when do_sample=false) would keep only the single most likely token if sampling.
-    //         top_p: 1.0, // (Ignored when do_sample=false) full nucleus; irrelevant here.
-    //         num_beams: 1, // Disable beam search; avoids longer continuations and extra compute.
-    //     });
-    // });
 }
 
 // Function to get the next generation from the LLM for the entire row  
