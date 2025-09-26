@@ -32,9 +32,14 @@
     </style>
 </head>
 <body>
-<div id="container"></div>
-<button id="llmButton">Run LLM CA</button>
 <script>
+// Parameters
+const RULE = 110;
+const ROW_SIZE = 100;
+const CELL_SIZE = 8;
+const CANVAS_WIDTH = ROW_SIZE * CELL_SIZE;
+const CANVAS_HEIGHT = window.innerHeight;
+const STEPS = 50;
 
 // Base class for shared logic
 class CellularAutomaton {
@@ -73,37 +78,18 @@ class DeterministicCellularAutomaton extends CellularAutomaton {
 }
 
 class LLMCellularAutomaton extends CellularAutomaton {
-    async getLLMResponse(messages, body = {}) {
-        const response = await fetch("http://localhost:11434/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        });
-        const data = await response.json();
-        if (data && data.message) {
-            try {
-                const parsed = JSON.parse(data.message.content);
-                return parsed;
-            } catch (e) {
-                console.error("Failed to parse LLM structured response:", data.message);
-                return null;
-            }
-        }
-        return null;
-    }
-
     getCASystemPrompts() {
         return [
             { role: "system", content: "You are a dictionary lookup engine" },
             { role: "system", content: "Below are your dictionary entries" },
-            { role: "system", content: `[1,1,1] -> ${this.ruleSet[0]}` },
-            { role: "system", content: `[1,1,0] -> ${this.ruleSet[1]}` },
-            { role: "system", content: `[1,0,1] -> ${this.ruleSet[2]}` },
-            { role: "system", content: `[1,0,0] -> ${this.ruleSet[3]}` },
-            { role: "system", content: `[0,1,1] -> ${this.ruleSet[4]}` },
-            { role: "system", content: `[0,1,0] -> ${this.ruleSet[5]}` },
-            { role: "system", content: `[0,0,1] -> ${this.ruleSet[6]}` },
-            { role: "system", content: `[0,0,0] -> ${this.ruleSet[7]}` },
+            { role: "system", content: `(1,1,1) -> ${this.ruleSet[0]}` },
+            { role: "system", content: `(1,1,0) -> ${this.ruleSet[1]}` },
+            { role: "system", content: `(1,0,1) -> ${this.ruleSet[2]}` },
+            { role: "system", content: `(1,0,0) -> ${this.ruleSet[3]}` },
+            { role: "system", content: `(0,1,1) -> ${this.ruleSet[4]}` },
+            { role: "system", content: `(0,1,0) -> ${this.ruleSet[5]}` },
+            { role: "system", content: `(0,0,1) -> ${this.ruleSet[6]}` },
+            { role: "system", content: `(0,0,0) -> ${this.ruleSet[7]}` },
             { role: "system", content: "When you receive a key from the user, you respond only with the corresponding value." },
         ];
     }
@@ -111,7 +97,7 @@ class LLMCellularAutomaton extends CellularAutomaton {
     async computeCellState(left, center, right) {
         const messages = [
             ...this.getCASystemPrompts(),
-            { role: 'user', content: `[${left},${center},${right}]` }
+            { role: 'user', content: `(${left},${center},${right})` }
         ];
         return this.getLLMResponse(messages, {
             model: 'llama3.1:latest',
@@ -134,28 +120,26 @@ class LLMCellularAutomaton extends CellularAutomaton {
         this.cells = newCells;
         return newCells;
     }
-}
 
-// Parameters
-const RULE = 110;
-const ROW_SIZE = 100;
-const CELL_SIZE = 8;
-const canvasWidth = ROW_SIZE * CELL_SIZE;
-const canvasHeight = window.innerHeight;
-const STEPS = 50;
-
-// DOM setup
-const container = document.getElementById('container');
-function createCanvas(width, height) {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    canvas.style.flex = '1';
-    canvas.style.height = '100%';
-    container.appendChild(canvas);
-    return canvas.getContext('2d');
+    async getLLMResponse(messages, body = {}) {
+        const response = await fetch("http://localhost:11434/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        if (data && data.message) {
+            try {
+                const parsed = JSON.parse(data.message.content);
+                return parsed;
+            } catch (e) {
+                console.error("Failed to parse LLM structured response:", data.message);
+                return null;
+            }
+        }
+        return null;
+    }
 }
-const ctx = createCanvas(canvasWidth, canvasHeight);
 
 // Automaton setup
 let deterministicAutomaton = new DeterministicCellularAutomaton(ROW_SIZE, RULE);
@@ -183,7 +167,7 @@ async function advanceLLM(step) {
     llmGenerations.push(llmAutomaton.cells.slice());
 }
 
-async function runDeterministicCA(steps) {
+async function runDeterministicCA(steps, ctx) {
     const deterministicColor = cell => cell ? 'lightgray' : 'white';
     for (let step = 0; step < steps; step++) {
         drawGeneration(deterministicGenerations[step], ctx, step * CELL_SIZE, CELL_SIZE, deterministicColor);
@@ -191,7 +175,7 @@ async function runDeterministicCA(steps) {
     }
 }
 
-async function runLLMCA(steps) {
+async function runLLMCA(steps, ctx) {
     const llmColor = (cell, i) => cell ? 'black' : 'white';
     for (let step = 0; step < steps; step++) {
         drawGeneration(llmGenerations[step], ctx, step * CELL_SIZE, CELL_SIZE, llmColor);
@@ -199,12 +183,40 @@ async function runLLMCA(steps) {
     }
 }
 
-// Button logic
-const llmButton = document.getElementById('llmButton');
-runDeterministicCA(STEPS);
+function createContainer() {
+    const container = document.createElement('div');
+    container.id = 'container';
+    document.body.appendChild(container);
+    return container;
+}
+
+function createButton(container) {
+    const button = document.createElement('button');
+    button.id = 'llmButton';
+    button.textContent = 'Run LLM CA';
+    container.appendChild(button);
+    return button;
+}
+
+// DOM setup
+function createCanvas(container, width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.flex = '1';
+    canvas.style.height = '100%';
+    container.appendChild(canvas);
+    return canvas.getContext('2d');
+}
+
+const container = createContainer();
+const llmButton = createButton(container);
+const ctx = createCanvas(container, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+runDeterministicCA(STEPS, ctx);
 llmButton.onclick = async () => {
     llmButton.disabled = true;
-    await runLLMCA(STEPS);
+    await runLLMCA(STEPS, ctx);
     llmButton.textContent = 'LLM CA Complete';
 };
 </script>
