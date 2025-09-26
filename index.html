@@ -32,191 +32,191 @@
     </style>
 </head>
 <body>
-    <div id="container"></div>
-    <button id="llmButton">Run LLM CA Overlay</button>
-    <script>
+<div id="container"></div>
+<button id="llmButton">Run LLM CA</button>
+<script>
 
-        function getRuleSet(rule) {
-            return Array.from(rule.toString(2).padStart(8, '0')).map(Number);
-        }
+function getRuleSet(rule) {
+    return Array.from(rule.toString(2).padStart(8, '0')).map(Number);
+}
 
-        async function callOllama(messages, body = {}) {
-            const response = await fetch("http://localhost:11434/api/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body)
-            });
-            const data = await response.json();
-            if (data && data.message) {
-                try {
-                    const parsed = JSON.parse(data.message.content);
-                    return parsed;
-                } catch (e) {
-                    console.error("Failed to parse LLM structured response:", data.message);
-                    return null;
-                }
-            }
+async function callOllama(messages, body = {}) {
+    const response = await fetch("http://localhost:11434/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    });
+    const data = await response.json();
+    if (data && data.message) {
+        try {
+            const parsed = JSON.parse(data.message.content);
+            return parsed;
+        } catch (e) {
+            console.error("Failed to parse LLM structured response:", data.message);
             return null;
         }
+    }
+    return null;
+}
 
-        // DeterministicCellularAutomaton class
-        class DeterministicCellularAutomaton {
-            constructor(size, rule) {
-                this.cells = new Array(size).fill(0);
-                this.ruleSet = getRuleSet(rule);
-            }
-            computeCellState(left, center, right) {
-                const index = 4 * left + 2 * center + right;
-                return this.ruleSet[7 - index];
-            }
-            nextGeneration() {
-                let newCells = new Array(this.cells.length);
-                for (let i = 0; i < this.cells.length; i++) {
-                    let left = this.cells[(i - 1 + this.cells.length) % this.cells.length];
-                    let center = this.cells[i];
-                    let right = this.cells[(i + 1) % this.cells.length];
-                    newCells[i] = this.computeCellState(left, center, right);
-                }
-                this.cells = newCells;
-            }
-            setCellState(index, state) {
-                if (index >= 0 && index < this.cells.length) {
-                    this.cells[index] = state;
-                } else {
-                    throw new Error('Index out of bounds');
-                }
-            }
+// DeterministicCellularAutomaton class
+class DeterministicCellularAutomaton {
+    constructor(size, rule) {
+        this.cells = new Array(size).fill(0);
+        this.ruleSet = getRuleSet(rule);
+    }
+    computeCellState(left, center, right) {
+        const index = 4 * left + 2 * center + right;
+        return this.ruleSet[7 - index];
+    }
+    nextGeneration() {
+        let newCells = new Array(this.cells.length);
+        for (let i = 0; i < this.cells.length; i++) {
+            let left = this.cells[(i - 1 + this.cells.length) % this.cells.length];
+            let center = this.cells[i];
+            let right = this.cells[(i + 1) % this.cells.length];
+            newCells[i] = this.computeCellState(left, center, right);
         }
-
-        class LLMCellularAutomaton {
-            constructor(size, rule) {
-                this.cells = new Array(size).fill(0);
-                this.ruleSet = getRuleSet(rule);
-            }
-
-            async computeCellState(left, center, right) {
-                const ruleSet = this.ruleSet;
-                const messages = [
-                    { role: "system", content: "You are a dictionary lookup engine" },
-                    { role: "system", content: "Below are your dictionary entries" },
-                    { role: "system", content: `[1,1,1] -> ${ruleSet[0]}` },
-                    { role: "system", content: `[1,1,0] -> ${ruleSet[1]}` },
-                    { role: "system", content: `[1,0,1] -> ${ruleSet[2]}` },
-                    { role: "system", content: `[1,0,0] -> ${ruleSet[3]}` },
-                    { role: "system", content: `[0,1,1] -> ${ruleSet[4]}` },
-                    { role: "system", content: `[0,1,0] -> ${ruleSet[5]}` },
-                    { role: "system", content: `[0,0,1] -> ${ruleSet[6]}` },
-                    { role: "system", content: `[0,0,0] -> ${ruleSet[7]}` },
-                    { role: "system", content: "When you receive a key from the user, you respond only with the corresponding value." },
-                    { role: "user", content: `[${left},${center},${right}]`}
-                ];
-                return callOllama(messages, {
-                    model: "llama3.1:latest",
-                    messages,
-                    stream: false,
-                    format: {
-                        type: "number",
-                        enum: [0, 1]
-                    },
-                    options: {
-                        temperature: 0
-                    }
-                });
-            }
-
-            async nextGeneration() {
-                let newCells = new Array(this.cells.length);
-                for (let i = 0; i < this.cells.length; i++) {
-                    let left = this.cells[(i - 1 + this.cells.length) % this.cells.length];
-                    let center = this.cells[i];
-                    let right = this.cells[(i + 1) % this.cells.length];
-                    const newCell = await this.computeCellState(left, center, right, i);
-                    newCells[i] = newCell;
-                }
-                this.cells = newCells;
-                return newCells;
-            }
-
-            setCellState(index, state) {
-                if (index >= 0 && index < this.cells.length) {
-                    this.cells[index] = state;
-                } else {
-                    throw new Error('Index out of bounds');
-                }
-            }
+        this.cells = newCells;
+    }
+    setCellState(index, state) {
+        if (index >= 0 && index < this.cells.length) {
+            this.cells[index] = state;
+        } else {
+            throw new Error('Index out of bounds');
         }
+    }
+}
 
-        // Parameters
-        const RULE = 110;
-        const ROW_SIZE = 100;
-        const CELL_SIZE = 8;
-        const canvasWidth = ROW_SIZE * CELL_SIZE;
-        const canvasHeight = window.innerHeight;
-        const STEPS = 50;
+class LLMCellularAutomaton {
+    constructor(size, rule) {
+        this.cells = new Array(size).fill(0);
+        this.ruleSet = getRuleSet(rule);
+    }
 
-        // DOM setup
-        const container = document.getElementById('container');
-        function createCanvas(width, height) {
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            canvas.style.flex = '1';
-            canvas.style.height = '100%';
-            container.appendChild(canvas);
-            return canvas.getContext('2d');
-        }
-        const ctx = createCanvas(canvasWidth, canvasHeight);
-
-        // Automaton setup
-        let deterministicAutomaton = new DeterministicCellularAutomaton(ROW_SIZE, RULE);
-        deterministicAutomaton.setCellState(Math.floor(deterministicAutomaton.cells.length / 2), 1);
-        let deterministicGenerations = [deterministicAutomaton.cells.slice()];
-
-        let llmAutomaton = new LLMCellularAutomaton(ROW_SIZE, RULE);
-        llmAutomaton.setCellState(Math.floor(llmAutomaton.cells.length / 2), 1);
-        let llmGenerations = [llmAutomaton.cells.slice()];
-
-        function drawGeneration(cells, ctx, y, cellSize, getCellColor) {
-            for (let i = 0; i < cells.length; i++) {
-                ctx.fillStyle = getCellColor(cells[i], i);
-                ctx.fillRect(i * cellSize, y, cellSize, cellSize);
+    async computeCellState(left, center, right) {
+        const ruleSet = this.ruleSet;
+        const messages = [
+            { role: "system", content: "You are a dictionary lookup engine" },
+            { role: "system", content: "Below are your dictionary entries" },
+            { role: "system", content: `[1,1,1] -> ${ruleSet[0]}` },
+            { role: "system", content: `[1,1,0] -> ${ruleSet[1]}` },
+            { role: "system", content: `[1,0,1] -> ${ruleSet[2]}` },
+            { role: "system", content: `[1,0,0] -> ${ruleSet[3]}` },
+            { role: "system", content: `[0,1,1] -> ${ruleSet[4]}` },
+            { role: "system", content: `[0,1,0] -> ${ruleSet[5]}` },
+            { role: "system", content: `[0,0,1] -> ${ruleSet[6]}` },
+            { role: "system", content: `[0,0,0] -> ${ruleSet[7]}` },
+            { role: "system", content: "When you receive a key from the user, you respond only with the corresponding value." },
+            { role: "user", content: `[${left},${center},${right}]`}
+        ];
+        return callOllama(messages, {
+            model: "llama3.1:latest",
+            messages,
+            stream: false,
+            format: {
+                type: "number",
+                enum: [0, 1]
+            },
+            options: {
+                temperature: 0
             }
-        }
+        });
+    }
 
-        function advanceDeterministic() {
-            deterministicAutomaton.nextGeneration();
-            deterministicGenerations.push(deterministicAutomaton.cells.slice());
+    async nextGeneration() {
+        let newCells = new Array(this.cells.length);
+        for (let i = 0; i < this.cells.length; i++) {
+            let left = this.cells[(i - 1 + this.cells.length) % this.cells.length];
+            let center = this.cells[i];
+            let right = this.cells[(i + 1) % this.cells.length];
+            const newCell = await this.computeCellState(left, center, right, i);
+            newCells[i] = newCell;
         }
+        this.cells = newCells;
+        return newCells;
+    }
 
-        async function advanceLLM(step) {
-            await llmAutomaton.nextGeneration();
-            llmGenerations.push(llmAutomaton.cells.slice());
+    setCellState(index, state) {
+        if (index >= 0 && index < this.cells.length) {
+            this.cells[index] = state;
+        } else {
+            throw new Error('Index out of bounds');
         }
+    }
+}
 
-        async function runDeterministicCA(steps) {
-            const deterministicColor = cell => cell ? 'lightgray' : 'white';
-            for (let step = 0; step < steps; step++) {
-                drawGeneration(deterministicGenerations[step], ctx, step * CELL_SIZE, CELL_SIZE, deterministicColor);
-                advanceDeterministic();
-            }
-        }
+// Parameters
+const RULE = 110;
+const ROW_SIZE = 100;
+const CELL_SIZE = 8;
+const canvasWidth = ROW_SIZE * CELL_SIZE;
+const canvasHeight = window.innerHeight;
+const STEPS = 50;
 
-        async function runLLMCA(steps) {
-            const llmColor = (cell, i) => cell ? 'black' : 'white';
-            for (let step = 0; step < steps; step++) {
-                drawGeneration(llmGenerations[step], ctx, step * CELL_SIZE, CELL_SIZE, llmColor);
-                await advanceLLM(step);
-            }
-        }
+// DOM setup
+const container = document.getElementById('container');
+function createCanvas(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.flex = '1';
+    canvas.style.height = '100%';
+    container.appendChild(canvas);
+    return canvas.getContext('2d');
+}
+const ctx = createCanvas(canvasWidth, canvasHeight);
 
-        // Button logic
-        const llmButton = document.getElementById('llmButton');
-        runDeterministicCA(STEPS);
-        llmButton.onclick = async () => {
-            llmButton.disabled = true;
-            await runLLMCA(STEPS);
-            llmButton.textContent = 'LLM CA Complete';
-        };
-    </script>
+// Automaton setup
+let deterministicAutomaton = new DeterministicCellularAutomaton(ROW_SIZE, RULE);
+deterministicAutomaton.setCellState(Math.floor(deterministicAutomaton.cells.length / 2), 1);
+let deterministicGenerations = [deterministicAutomaton.cells.slice()];
+
+let llmAutomaton = new LLMCellularAutomaton(ROW_SIZE, RULE);
+llmAutomaton.setCellState(Math.floor(llmAutomaton.cells.length / 2), 1);
+let llmGenerations = [llmAutomaton.cells.slice()];
+
+function drawGeneration(cells, ctx, y, cellSize, getCellColor) {
+    for (let i = 0; i < cells.length; i++) {
+        ctx.fillStyle = getCellColor(cells[i], i);
+        ctx.fillRect(i * cellSize, y, cellSize, cellSize);
+    }
+}
+
+function advanceDeterministic() {
+    deterministicAutomaton.nextGeneration();
+    deterministicGenerations.push(deterministicAutomaton.cells.slice());
+}
+
+async function advanceLLM(step) {
+    await llmAutomaton.nextGeneration();
+    llmGenerations.push(llmAutomaton.cells.slice());
+}
+
+async function runDeterministicCA(steps) {
+    const deterministicColor = cell => cell ? 'lightgray' : 'white';
+    for (let step = 0; step < steps; step++) {
+        drawGeneration(deterministicGenerations[step], ctx, step * CELL_SIZE, CELL_SIZE, deterministicColor);
+        advanceDeterministic();
+    }
+}
+
+async function runLLMCA(steps) {
+    const llmColor = (cell, i) => cell ? 'black' : 'white';
+    for (let step = 0; step < steps; step++) {
+        drawGeneration(llmGenerations[step], ctx, step * CELL_SIZE, CELL_SIZE, llmColor);
+        await advanceLLM(step);
+    }
+}
+
+// Button logic
+const llmButton = document.getElementById('llmButton');
+runDeterministicCA(STEPS);
+llmButton.onclick = async () => {
+    llmButton.disabled = true;
+    await runLLMCA(STEPS);
+    llmButton.textContent = 'LLM CA Complete';
+};
+</script>
 </body>
 </html>
