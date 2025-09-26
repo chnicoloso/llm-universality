@@ -47,9 +47,11 @@ class CellularAutomaton {
         this.cells = new Array(size).fill(0);
         this.ruleSet = this.getRuleSet(rule);
     }
+
     getRuleSet(rule) {
         return Array.from(rule.toString(2).padStart(8, '0')).map(Number);
     }
+
     setCellState(index, state) {
         if (index >= 0 && index < this.cells.length) {
             this.cells[index] = state;
@@ -57,23 +59,29 @@ class CellularAutomaton {
             throw new Error('Index out of bounds');
         }
     }
-}
 
-class DeterministicCellularAutomaton extends CellularAutomaton {
-    computeCellState(left, center, right) {
-        const index = 4 * left + 2 * center + right;
-        return this.ruleSet[7 - index];
+    async computeCellState(left, center, right) {
+        throw new Error('computeCellState must be implemented by subclass');
     }
-    nextGeneration() {
+
+    async nextGeneration() {
         const len = this.cells.length;
         let newCells = new Array(len);
         for (let i = 0; i < len; i++) {
             const left = this.cells[(i - 1 + len) % len];
             const center = this.cells[i];
             const right = this.cells[(i + 1) % len];
-            newCells[i] = this.computeCellState(left, center, right);
+            newCells[i] = await this.computeCellState(left, center, right);
         }
         this.cells = newCells;
+        return newCells;
+    }
+}
+
+class DeterministicCellularAutomaton extends CellularAutomaton {
+    computeCellState(left, center, right) {
+        const index = 4 * left + 2 * center + right;
+        return this.ruleSet[7 - index];
     }
 }
 
@@ -108,19 +116,6 @@ class LLMCellularAutomaton extends CellularAutomaton {
         });
     }
 
-    async nextGeneration() {
-        const len = this.cells.length;
-        let newCells = new Array(len);
-        for (let i = 0; i < len; i++) {
-            const left = this.cells[(i - 1 + len) % len];
-            const center = this.cells[i];
-            const right = this.cells[(i + 1) % len];
-            newCells[i] = await this.computeCellState(left, center, right);
-        }
-        this.cells = newCells;
-        return newCells;
-    }
-
     async getLLMResponse(messages, body = {}) {
         const response = await fetch("http://localhost:11434/api/chat", {
             method: "POST",
@@ -142,13 +137,11 @@ class LLMCellularAutomaton extends CellularAutomaton {
 }
 
 // Automaton setup
-let deterministicAutomaton = new DeterministicCellularAutomaton(ROW_SIZE, RULE);
-deterministicAutomaton.setCellState(Math.floor(deterministicAutomaton.cells.length / 2), 1);
-let deterministicGenerations = [deterministicAutomaton.cells.slice()];
-
-let llmAutomaton = new LLMCellularAutomaton(ROW_SIZE, RULE);
-llmAutomaton.setCellState(Math.floor(llmAutomaton.cells.length / 2), 1);
-let llmGenerations = [llmAutomaton.cells.slice()];
+function setupAutomaton(AutomatonClass) {
+    const automaton = new AutomatonClass(ROW_SIZE, RULE);
+    automaton.setCellState(Math.floor(automaton.cells.length / 2), 1);
+    return [automaton, [automaton.cells.slice()]];
+}
 
 function drawGeneration(cells, ctx, y, cellSize, getCellColor) {
     for (let i = 0; i < cells.length; i++) {
@@ -157,29 +150,15 @@ function drawGeneration(cells, ctx, y, cellSize, getCellColor) {
     }
 }
 
-function advanceDeterministic() {
-    deterministicAutomaton.nextGeneration();
-    deterministicGenerations.push(deterministicAutomaton.cells.slice());
+async function advanceAutomaton(automaton, history) {
+    await automaton.nextGeneration();
+    history.push(automaton.cells.slice());
 }
 
-async function advanceLLM(step) {
-    await llmAutomaton.nextGeneration();
-    llmGenerations.push(llmAutomaton.cells.slice());
-}
-
-async function runDeterministicCA(steps, ctx) {
-    const deterministicColor = cell => cell ? 'lightgray' : 'white';
+async function runCA(steps, ctx, history, automaton, getCellColor) {
     for (let step = 0; step < steps; step++) {
-        drawGeneration(deterministicGenerations[step], ctx, step * CELL_SIZE, CELL_SIZE, deterministicColor);
-        advanceDeterministic();
-    }
-}
-
-async function runLLMCA(steps, ctx) {
-    const llmColor = (cell, i) => cell ? 'black' : 'white';
-    for (let step = 0; step < steps; step++) {
-        drawGeneration(llmGenerations[step], ctx, step * CELL_SIZE, CELL_SIZE, llmColor);
-        await advanceLLM(step);
+        drawGeneration(history[step], ctx, step * CELL_SIZE, CELL_SIZE, getCellColor);
+        await advanceAutomaton(automaton, history);
     }
 }
 
@@ -213,10 +192,18 @@ const container = createContainer();
 const llmButton = createButton(container);
 const ctx = createCanvas(container, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-runDeterministicCA(STEPS, ctx);
+const [deterministicCA, deterministicHistory] = setupAutomaton(DeterministicCellularAutomaton);
+const [llmCA, llmHistory] = setupAutomaton(LLMCellularAutomaton);
+
+// First run the deterministic CA and render it as reference.
+const deterministicColor = cell => cell ? 'lightgray' : 'white';
+runCA(STEPS, ctx, deterministicHistory, deterministicCA, deterministicColor);
+
 llmButton.onclick = async () => {
     llmButton.disabled = true;
-    await runLLMCA(STEPS, ctx);
+    // Now run the LLM-based CA and render it on top of the reference.
+    const llmColor = (cell, i) => cell ? 'black' : 'white';
+    await runCA(STEPS, ctx, llmHistory, llmCA, llmColor);
     llmButton.textContent = 'LLM CA Complete';
 };
 </script>
