@@ -36,113 +36,103 @@
 <button id="llmButton">Run LLM CA</button>
 <script>
 
-function getRuleSet(rule) {
-    return Array.from(rule.toString(2).padStart(8, '0')).map(Number);
-}
-
-async function callOllama(messages, body = {}) {
-    const response = await fetch("http://localhost:11434/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-    });
-    const data = await response.json();
-    if (data && data.message) {
-        try {
-            const parsed = JSON.parse(data.message.content);
-            return parsed;
-        } catch (e) {
-            console.error("Failed to parse LLM structured response:", data.message);
-            return null;
-        }
-    }
-    return null;
-}
-
-// DeterministicCellularAutomaton class
-class DeterministicCellularAutomaton {
+// Base class for shared logic
+class CellularAutomaton {
     constructor(size, rule) {
         this.cells = new Array(size).fill(0);
-        this.ruleSet = getRuleSet(rule);
+        this.ruleSet = this.getRuleSet(rule);
     }
+    getRuleSet(rule) {
+        return Array.from(rule.toString(2).padStart(8, '0')).map(Number);
+    }
+    setCellState(index, state) {
+        if (index >= 0 && index < this.cells.length) {
+            this.cells[index] = state;
+        } else {
+            throw new Error('Index out of bounds');
+        }
+    }
+}
+
+class DeterministicCellularAutomaton extends CellularAutomaton {
     computeCellState(left, center, right) {
         const index = 4 * left + 2 * center + right;
         return this.ruleSet[7 - index];
     }
     nextGeneration() {
-        let newCells = new Array(this.cells.length);
-        for (let i = 0; i < this.cells.length; i++) {
-            let left = this.cells[(i - 1 + this.cells.length) % this.cells.length];
-            let center = this.cells[i];
-            let right = this.cells[(i + 1) % this.cells.length];
+        const len = this.cells.length;
+        let newCells = new Array(len);
+        for (let i = 0; i < len; i++) {
+            const left = this.cells[(i - 1 + len) % len];
+            const center = this.cells[i];
+            const right = this.cells[(i + 1) % len];
             newCells[i] = this.computeCellState(left, center, right);
         }
         this.cells = newCells;
     }
-    setCellState(index, state) {
-        if (index >= 0 && index < this.cells.length) {
-            this.cells[index] = state;
-        } else {
-            throw new Error('Index out of bounds');
-        }
-    }
 }
 
-class LLMCellularAutomaton {
-    constructor(size, rule) {
-        this.cells = new Array(size).fill(0);
-        this.ruleSet = getRuleSet(rule);
+class LLMCellularAutomaton extends CellularAutomaton {
+    async getLLMResponse(messages, body = {}) {
+        const response = await fetch("http://localhost:11434/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        if (data && data.message) {
+            try {
+                const parsed = JSON.parse(data.message.content);
+                return parsed;
+            } catch (e) {
+                console.error("Failed to parse LLM structured response:", data.message);
+                return null;
+            }
+        }
+        return null;
+    }
+
+    getCASystemPrompts() {
+        return [
+            { role: "system", content: "You are a dictionary lookup engine" },
+            { role: "system", content: "Below are your dictionary entries" },
+            { role: "system", content: `[1,1,1] -> ${this.ruleSet[0]}` },
+            { role: "system", content: `[1,1,0] -> ${this.ruleSet[1]}` },
+            { role: "system", content: `[1,0,1] -> ${this.ruleSet[2]}` },
+            { role: "system", content: `[1,0,0] -> ${this.ruleSet[3]}` },
+            { role: "system", content: `[0,1,1] -> ${this.ruleSet[4]}` },
+            { role: "system", content: `[0,1,0] -> ${this.ruleSet[5]}` },
+            { role: "system", content: `[0,0,1] -> ${this.ruleSet[6]}` },
+            { role: "system", content: `[0,0,0] -> ${this.ruleSet[7]}` },
+            { role: "system", content: "When you receive a key from the user, you respond only with the corresponding value." },
+        ];
     }
 
     async computeCellState(left, center, right) {
-        const ruleSet = this.ruleSet;
         const messages = [
-            { role: "system", content: "You are a dictionary lookup engine" },
-            { role: "system", content: "Below are your dictionary entries" },
-            { role: "system", content: `[1,1,1] -> ${ruleSet[0]}` },
-            { role: "system", content: `[1,1,0] -> ${ruleSet[1]}` },
-            { role: "system", content: `[1,0,1] -> ${ruleSet[2]}` },
-            { role: "system", content: `[1,0,0] -> ${ruleSet[3]}` },
-            { role: "system", content: `[0,1,1] -> ${ruleSet[4]}` },
-            { role: "system", content: `[0,1,0] -> ${ruleSet[5]}` },
-            { role: "system", content: `[0,0,1] -> ${ruleSet[6]}` },
-            { role: "system", content: `[0,0,0] -> ${ruleSet[7]}` },
-            { role: "system", content: "When you receive a key from the user, you respond only with the corresponding value." },
-            { role: "user", content: `[${left},${center},${right}]`}
+            ...this.getCASystemPrompts(),
+            { role: 'user', content: `[${left},${center},${right}]` }
         ];
-        return callOllama(messages, {
-            model: "llama3.1:latest",
+        return this.getLLMResponse(messages, {
+            model: 'llama3.1:latest',
             messages,
             stream: false,
-            format: {
-                type: "number",
-                enum: [0, 1]
-            },
-            options: {
-                temperature: 0
-            }
+            format: { type: 'number', enum: [0, 1] },
+            options: { temperature: 0 }
         });
     }
 
     async nextGeneration() {
-        let newCells = new Array(this.cells.length);
-        for (let i = 0; i < this.cells.length; i++) {
-            let left = this.cells[(i - 1 + this.cells.length) % this.cells.length];
-            let center = this.cells[i];
-            let right = this.cells[(i + 1) % this.cells.length];
-            const newCell = await this.computeCellState(left, center, right, i);
-            newCells[i] = newCell;
+        const len = this.cells.length;
+        let newCells = new Array(len);
+        for (let i = 0; i < len; i++) {
+            const left = this.cells[(i - 1 + len) % len];
+            const center = this.cells[i];
+            const right = this.cells[(i + 1) % len];
+            newCells[i] = await this.computeCellState(left, center, right);
         }
         this.cells = newCells;
         return newCells;
-    }
-
-    setCellState(index, state) {
-        if (index >= 0 && index < this.cells.length) {
-            this.cells[index] = state;
-        } else {
-            throw new Error('Index out of bounds');
-        }
     }
 }
 
