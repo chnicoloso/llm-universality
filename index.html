@@ -196,7 +196,7 @@ class LLMCellularAutomaton extends CellularAutomaton {
             { role: 'user', content: `(${left},${center},${right})` }
         ];
         return this.getLLMResponse(messages, {
-            model: 'llama3.1:latest',
+            model: 'smollm2:1.7b',
             messages,
             stream: false,
             format: { type: 'number', enum: [0, 1] },
