@@ -14,9 +14,7 @@ This is the same basic argument that was made to establish that [CSS3 (+HTML) is
 
 A short video of the system running is included below:
 
-<video src="llm-universality-20x.mp4" controls width="600">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/477685ea-fcce-49ba-a783-2c1a78da1c86
 
 ## Implications
 More thoughts soon on what this means for LLMs and AI → [fuitura.com](https://fuitura.com/)
