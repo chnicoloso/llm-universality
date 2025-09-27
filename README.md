@@ -4,7 +4,7 @@ This project shows a simple, informal proof that even a very small LLM ([SmolLM2
 
 ## Idea
 
-* The **[Rule 110](https://en.wikipedia.org/wiki/Rule_110)** cellular automaton  is one of the simplest systems proven to be Turing complete / universal.
+* The **[Rule 110](https://en.wikipedia.org/wiki/Rule_110)** cellular automaton  is one of the simplest systems proven to be Turing complete/universal.
 * Here we demonstrate that a small LLM can **emulate Rule 110’s update function**.
 * Since the LLM correctly and consistently reproduces the behavior Rule 110, it too can be understood to constitute a [Universal (Turing) Machine](https://en.wikipedia.org/wiki/Universal_Turing_machine).
 
@@ -12,8 +12,11 @@ This is the same basic argument that was made to establish that [CSS3 (+HTML) is
 
 ## Demo Video
 
-A short video of the system running is included in this repository.
-https://github.com/user-attachments/assets/477685ea-fcce-49ba-a783-2c1a78da1c86
+A short video of the system running is included below:
+
+<video src="llm-universality-20x.mp4" controls width="600">
+  Your browser does not support the video tag.
+</video>
 
 ## Implications
 More thoughts soon on what this means for LLMs and AI → [fuitura.com](https://fuitura.com/)
