@@ -17,7 +17,7 @@ A short video of the system running is included below:
 https://github.com/user-attachments/assets/477685ea-fcce-49ba-a783-2c1a78da1c86
 
 ## Implications
-More thoughts soon on what this means for LLMs and AI → [fuitura.com](https://fuitura.com/)
+More thoughts soon on what this means for LLMs and AI → [fuitura.com](https://fuitura.substack.com/)
 
 ## How It Works
 
