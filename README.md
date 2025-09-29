@@ -1,6 +1,8 @@
 # LLMs are Universal
 
-This project shows a simple, informal proof that even a very small LLM ([SmolLM2:1.7B](https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B)) can be considered **[Turing complete/universal](https://en.wikipedia.org/wiki/Turing_completeness)**.
+This project shows a simple informal proof that even a very small LLM ([SmolLM2:1.7B](https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B)) can be considered [Turing complete/universal](https://en.wikipedia.org/wiki/Turing_completeness).
+
+In terms of [prior work](https://scholar.google.com/scholar?hl=en&as_sdt=0,5&q=LLM+turing+completeness), I see a [recent paper](https://arxiv.org/abs/2411.01992) that — if I understand correctly — establishes that the Transformer architecture that powers LLMs is _theoretically_ capable of supporting universality. So I think the contribution here is to show _empirically_ that this is the case. Additionally, this experiment also shows that universality can be achieved by models not specifically trained to do so.
 
 ## Idea
 
@@ -8,7 +10,7 @@ This project shows a simple, informal proof that even a very small LLM ([SmolLM2
 * Here we demonstrate that a small LLM can **emulate Rule 110’s update function**.
 * Since the LLM correctly and consistently reproduces the behavior Rule 110, it too can be understood to constitute a [Universal (Turing) Machine](https://en.wikipedia.org/wiki/Universal_Turing_machine).
 
-This is the same basic argument that was made to establish that [CSS3 (+HTML) is Turing Complete/Universal](https://accodeing.com/blog/2015/css3-proven-to-be-turing-complete)
+This is the same basic argument that was made to establish that [CSS3 (+HTML) is Turing complete/universal](https://accodeing.com/blog/2015/css3-proven-to-be-turing-complete)
 
 ## Demo Video
 
@@ -48,10 +50,7 @@ More thoughts soon on what this means for LLMs and AI → [fuitura.com](https://
    - Run: `python3 -m http.server 8000`
    - Or use any static file server
 3. **Open the app:**
-   - Go to `http://localhost:8000/index.html` in your browser
+   - Go to `http://localhost:8000` in your browser
 4. **Observe:**
    - Light gray = deterministic Rule 110
 5. **Click Start** to watch the LLM automaton evolve to match the output of the deterministic automaton.
-
-
-
