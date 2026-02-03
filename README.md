@@ -4,6 +4,23 @@ This project shows a simple informal proof that even a very small LLM ([SmolLM2:
 
 In terms of [prior work](https://scholar.google.com/scholar?hl=en&as_sdt=0,5&q=LLM+turing+completeness), I see a [recent paper](https://arxiv.org/abs/2411.01992) that — if I understand correctly — establishes that the Transformer architecture that powers LLMs is _theoretically_ capable of supporting universality. So I think the contribution here is to show _empirically_ that this is the case. Additionally, this experiment also shows that universality can be achieved by models not specifically trained to do so.
 
+## Update
+
+After publishing this experiment, I became aware of related work by Google DeepMind + University of Alberta:
+
+[Memory Augmented Large Language Models are Computationally Universal](https://arxiv.org/pdf/2301.04589)
+
+That paper establishes computational universality for a fixed, pretrained LLM (Flan-U-PaLM 540B) when combined with an external associative read–write memory, by building a stored-instruction “prompt program” computer that exactly simulates the U15,2 universal Turing machine.
+
+The authors note that they considered emulating Rule 110 as we do here:
+>Earlier versions of this work considered simulating Rule 110 for a one dimensional cellular automaton [Wolfram, 2002], leveraging the fact that this is known to be a (weakly) Turing complete [Cook, 2004]. Although far more visually appealing, Rule 110 requires an unbounded periodic initialization to simulate an arbitrary Turing machine… The more direct simulation of U15,2 presented in this paper, which requires only a bounded initialization, appears to be more convincing.
+
+I also understand that the contribution here should be understood more modestly: the LLM here cannot be claimed to be Turing complete in isolation; global state and iteration are maintained externally, and the model is used solely to compute the local update rule of the system.
+
+What can still be considered interesting about this experiment then is that it show empirically that a small, off-the-shelf LLM (1.7B parameters) can reliably realize the local transition function of a known universal cellular automaton (Rule 110).
+
+While this does not constitute a formal universality result for LLMs themselves, it suggests that the capacity to instantiate universal local dynamics may already be present at surprisingly small model scales.
+
 ## Idea
 
 * The **[Rule 110](https://en.wikipedia.org/wiki/Rule_110)** cellular automaton  is one of the simplest systems proven to be Turing complete/universal.
@@ -17,9 +34,6 @@ This is the same basic argument that was made to establish that [CSS3 (+HTML) is
 A short video of the system running is included below:
 
 https://github.com/user-attachments/assets/477685ea-fcce-49ba-a783-2c1a78da1c86
-
-## Implications
-More thoughts soon on what this means for LLMs and AI → [fuitura.com](https://fuitura.com/)
 
 ## How It Works
 
