@@ -13,11 +13,11 @@ After publishing this experiment, I became aware of related work by Google DeepM
 That paper establishes computational universality for a fixed, pretrained LLM (Flan-U-PaLM 540B) when combined with an external associative read–write memory, by building a stored-instruction “prompt program” computer that exactly simulates the U15,2 universal Turing machine.
 
 The authors note that they considered emulating Rule 110 as we do here:
->Earlier versions of this work considered simulating Rule 110 for a one dimensional cellular automaton [Wolfram, 2002], leveraging the fact that this is known to be a (weakly) Turing complete [Cook, 2004]. Although far more visually appealing, Rule 110 requires an unbounded periodic initialization to simulate an arbitrary Turing machine… The more direct simulation of U15,2 presented in this paper, which requires only a bounded initialization, appears to be more convincing.
+>Earlier versions of this work considered simulating Rule 110 for a one dimensional cellular automaton [Wolfram, 2002], leveraging the fact that this is known to be a (weakly) Turing complete [Cook, 2004]. Although far more visually appealing, Rule 110 requires an unbounded periodic initialization to simulate an arbitrary Turing machine…The more direct simulation of U15,2 presented in this paper, which requires only a bounded initialization, appears to be more convincing.
 
-I also understand that the contribution here should be understood more modestly: the LLM here cannot be claimed to be Turing complete in isolation; global state and iteration are maintained externally, and the model is used solely to compute the local update rule of the system.
+I also now understand that the contribution here should be understood more modestly: the LLM here cannot be claimed to be Turing complete in isolation; global state and iteration are maintained externally, and the model is used solely to compute the local update rule of the system.
 
-What can still be considered interesting about this experiment then is that it show empirically that a small, off-the-shelf LLM (1.7B parameters) can reliably realize the local transition function of a known universal cellular automaton (Rule 110).
+What can still be considered interesting about this experiment then is that it shows empirically that a small, off-the-shelf LLM (1.7B parameters) can reliably realize the local transition function of a known universal cellular automaton (Rule 110).
 
 While this does not constitute a formal universality result for LLMs themselves, it suggests that the capacity to instantiate universal local dynamics may already be present at surprisingly small model scales.
 
